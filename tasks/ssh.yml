@@ -1,6 +1,11 @@
 ---
 - name: Enable sshd
   service: name=sshd state=started enabled=yes
+  when: ansible_os_family == "RedHat" or ( ansible_os_family == "Debian" and ansible_lsb.major_release|int >= 16 )
+
+- name: Enable ssh
+  service: name=ssh state=started enabled=yes
+  when: ansible_os_family == "Debian" and ( ansible_lsb.major_release|int < 8 or ansible_lsb.major_release|int < 16 )
 
 - name: Make sure /home/hadoop_service_user/.ssh/ exists
   file: path=/home/{{ hadoop_service_user }}/.ssh state=directory owner={{ hadoop_service_user }} group={{ hadoop_service_user }} mode=0700
