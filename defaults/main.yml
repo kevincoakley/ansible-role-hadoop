@@ -1,2 +1,3 @@
 ---
-# defaults file for ansible-role-hadoop
+hadoop_service_user: hadoop
+hadoop_version: 2.6.4
