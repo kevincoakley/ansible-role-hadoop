@@ -1,0 +1,6 @@
+---
+hadoop_packages:
+  - java-1.8.0-openjdk
+  - sudo
+  - which
+java_home: /usr/lib/jvm/jre/
