@@ -1,0 +1,31 @@
+---
+- name: Enable sshd
+  service: name=sshd state=started enabled=yes
+
+- name: Make sure /home/hadoop_service_user/.ssh/ exists
+  file: path=/home/{{ hadoop_service_user }}/.ssh state=directory owner={{ hadoop_service_user }} group={{ hadoop_service_user }} mode=0700
+
+- name: Stat /home/hadoop_service_user/.ssh/id_rsa
+  stat: path=/home/{{ hadoop_service_user }}/.ssh/id_rsa
+  register: ssh_id_rsa 
+
+- name: Generate passwordless ssh key pair
+  shell: ssh-keygen -t rsa -P "" -f /home/{{ hadoop_service_user }}/.ssh/id_rsa
+  become: yes
+  become_user: "{{ hadoop_service_user }}"
+  become_method: sudo
+  when: ssh_id_rsa.stat.exists == False
+
+- name: Stat /home/hadoop_service_user/.ssh/authorized_keys
+  stat: path=/home/{{ hadoop_service_user }}/.ssh/authorized_keys
+  register: ssh_authorized_keys
+
+- name: Add public key to authorized_keys
+  shell: cat /home/{{ hadoop_service_user }}/.ssh/id_rsa.pub >> /home/{{ hadoop_service_user }}/.ssh/authorized_keys
+  become: yes
+  become_user: "{{ hadoop_service_user }}"
+  become_method: sudo
+  when: ssh_authorized_keys.stat.exists == False
+
+- name: Create ssh config
+  copy: src="{{ role_path }}/files/ssh_config" dest=/home/{{ hadoop_service_user }}/.ssh/config owner={{ hadoop_service_user }} group={{ hadoop_service_user }} mode=0600
