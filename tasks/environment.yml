@@ -1,0 +1,25 @@
+---
+- name: Add JAVA_HOME to .bashrc
+  lineinfile: dest=/home/{{ hadoop_service_user }}/.bashrc regexp="^export JAVA_HOME=" line="export JAVA_HOME={{ java_home }}"
+
+- name: Add JAVA_HOME to /etc/environment
+  lineinfile: dest=/etc/environment regexp="^JAVA_HOME=" line="JAVA_HOME={{ java_home }}"
+
+- name: Add HADOOP_PREFIX to .bashrc
+  lineinfile: dest=/home/{{ hadoop_service_user }}/.bashrc regexp="^export HADOOP_PREFIX=" line="export HADOOP_PREFIX=/opt/hadoop"
+
+- name: Add HADOOP_COMMON_LIB_NATIVE_DIR to .bashrc
+  lineinfile: dest=/home/{{ hadoop_service_user }}/.bashrc regexp="^export HADOOP_COMMON_LIB_NATIVE_DIR=" line="export HADOOP_COMMON_LIB_NATIVE_DIR=${HADOOP_PREFIX}/lib/native"
+
+- name: Add HADOOP_OPTS to .bashrc
+  lineinfile: dest=/home/{{ hadoop_service_user }}/.bashrc regexp="^export HADOOP_OPTS=" line="export HADOOP_OPTS=\"-Djava.library.path=$HADOOP_PREFIX/lib\""
+
+- name: Add HADOOP_HOME_WARN_SUPPRESS to .bashrc
+  lineinfile: dest=/home/{{ hadoop_service_user }}/.bashrc regexp="^export HADOOP_HOME_WARN_SUPPRESS=" line="export HADOOP_HOME_WARN_SUPPRESS=1"
+
+- name: Add HADOOP_ROOT_LOGGER to .bashrc
+  lineinfile: dest=/home/{{ hadoop_service_user }}/.bashrc regexp="^export HADOOP_ROOT_LOGGER=" line="export HADOOP_ROOT_LOGGER=\"WARN\""
+
+- name: Add /opt/hadoop/bin to PATH in .bashrc
+  lineinfile: dest=/home/{{ hadoop_service_user }}/.bashrc regexp="^export PATH=\$PATH:/opt/hadoop/bin" line="export PATH=$PATH:/opt/hadoop/bin"
+
