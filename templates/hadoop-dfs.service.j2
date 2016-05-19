@@ -1,0 +1,15 @@
+[Unit]
+Description=Hadoop DFS
+After=network.target
+
+[Service]
+Type=forking
+PIDFile=/tmp/hadoop-hadoop-namenode.pid
+User={{ hadoop_service_user }}
+Group={{ hadoop_service_user }}
+EnvironmentFile=/etc/default/hadoop
+ExecStart=/opt/hadoop/sbin/start-dfs.sh
+ExecStop=/opt/hadoop/sbin/stop-dfs.sh
+
+[Install]
+WantedBy=multi-user.target

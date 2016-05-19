@@ -1,0 +1,41 @@
+### BEGIN INIT INFO
+# Provides:          dfs
+# Required-Start:    sshd
+# Required-Stop:     
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: dfs
+# Description:       start dfs daemons
+### END INIT INFO
+
+# source function library
+. /etc/rc.d/init.d/functions
+
+RETVAL=0
+PIDFILE=/tmp/hadoop-hadoop-namenode.pid
+
+export JAVA_HOME={{ java_home }}
+export HADOOP_PREFIX=/opt/hadoop
+export HADOOP_COMMON_LIB_NATIVE_DIR=${HADOOP_PREFIX}/lib/native
+export HADOOP_OPTS="-Djava.library.path=$HADOOP_PREFIX/lib"
+export HADOOP_HOME_WARN_SUPPRESS=1
+export HADOOP_ROOT_LOGGER="WARN"
+
+case "$1" in
+    start)
+	/bin/su {{ hadoop_service_user }} -s /bin/bash -c /opt/hadoop/sbin/start-dfs.sh
+        RETVAL=$?
+        ;;
+    stop)
+	/bin/su {{ hadoop_service_user }} -s /bin/bash -c /opt/hadoop/sbin/stop-dfs.sh
+        RETVAL=$?
+        ;;
+    status)
+        status -p $PIDFILE supervisor
+        ;;
+    *)
+        echo "Usage: hadoop-dfs {start|stop|status}"
+        RETVAL=2
+esac
+
+exit $RETVAL
