@@ -1,18 +1,9 @@
-### BEGIN INIT INFO
-# Provides:          yarn
-# Required-Start:    sshd
-# Required-Stop:     
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
-# Short-Description: dfs
-# Description:       start dfs daemons
-### END INIT INFO
-
-# source function library
-. /etc/rc.d/init.d/functions
-
-RETVAL=0
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+USER={{ hadoop_service_user }}
+START=/opt/hadoop/sbin/start-yarn.sh
+STOP=/opt/hadoop/sbin/stop-yarn.sh
 PIDFILE=/tmp/yarn-hadoop-resourcemanager.pid
+SCRIPTNAME=/etc/init.d/hadoop-yarn
 
 export JAVA_HOME={{ java_home }}
 export HADOOP_PREFIX=/opt/hadoop
@@ -21,21 +12,34 @@ export HADOOP_OPTS="-Djava.library.path=$HADOOP_PREFIX/lib"
 export HADOOP_HOME_WARN_SUPPRESS=1
 export HADOOP_ROOT_LOGGER="WARN"
 
-case "$1" in
-    start)
-	/bin/su {{ hadoop_service_user }} -s /bin/bash -c /opt/hadoop/sbin/start-yarn.sh
-        RETVAL=$?
-        ;;
-    stop)
-	/bin/su {{ hadoop_service_user }} -s /bin/bash -c /opt/hadoop/sbin/stop-yarn.sh
-        RETVAL=$?
-        ;;
-    status)
-        status -p $PIDFILE supervisor
-        ;;
-    *)
-        echo "Usage: hadoop-yarn {start|stop|status}"
-        RETVAL=2
-esac
+. /lib/lsb/init-functions
 
-exit $RETVAL
+do_start()
+{
+  ulimit -n 40000
+  start-stop-daemon --chuid $USER  --start --quiet --oknodo --pidfile $PIDFILE --exec $START
+}
+
+do_stop()
+{
+  exec su - $USER $STOP
+}
+
+case "$1" in
+  start)
+    do_start
+    ;;
+  stop)
+    do_stop
+    ;;
+  status)
+    status_of_proc -p $PIDFILE "$USER"
+    ;;
+  restart|force-reload)
+    do_stop && do_start
+    ;;
+  *)
+    echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload}" >&2
+    exit 3
+    ;;
+esac
