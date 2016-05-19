@@ -1,2 +1,186 @@
 ---
-# tasks file for ansible-role-hadoop
+- name: Include OS family specific variables
+  include_vars: "{{ ansible_os_family }}.yml"
+
+- name: Add hadoop_service_user group
+  group: name={{ hadoop_service_user }} state=present system=yes
+
+- name: Add hadoop_service_user user
+  user: name={{ hadoop_service_user }} group={{ hadoop_service_user }} append=yes shell=/bin/bash
+
+- name: Download and install yum packages
+  yum: name={{ item }} state=present
+  with_items: "{{ hadoop_packages }}"
+  when: ansible_os_family == "RedHat"
+
+- name: Download and install apt-get packages
+  apt: name={{ item }} state=present
+  with_items: "{{ hadoop_packages }}"
+  when: ansible_os_family == "Debian"
+
+- include: ssh.yml
+
+- include: environment.yml
+
+- name: Stat /opt/hadoop
+  stat: path=/opt/hadoop-{{ hadoop_version }}
+  register: hadoop_directory
+
+- name: Download Hadoop
+  get_url: url=http://archive.apache.org/dist/hadoop/common/hadoop-{{ hadoop_version }}/hadoop-{{ hadoop_version }}.tar.gz dest=/tmp/hadoop.tar.gz
+  when: hadoop_directory.stat.exists == False
+
+- name: Extract Hadoop
+  unarchive: src=/tmp/hadoop.tar.gz dest=/opt/ copy=no owner={{ hadoop_service_user }} group={{ hadoop_service_user }}
+  when: hadoop_directory.stat.exists == False
+
+- name: Link Hadoop
+  file: src=/opt/hadoop-{{ hadoop_version }} dest=/opt/hadoop state=link owner={{ hadoop_service_user }} group={{ hadoop_service_user }}
+
+- name: Copy core-site.xml
+  copy: src=core-site.xml dest=/opt/hadoop/etc/hadoop/core-site.xml owner={{ hadoop_service_user }} group={{ hadoop_service_user }} mode=0644
+
+- name: Copy hdfs-site.xml
+  copy: src=hdfs-site.xml dest=/opt/hadoop/etc/hadoop/hdfs-site.xml owner={{ hadoop_service_user }} group={{ hadoop_service_user }} mode=0644
+
+- name: Copy mapred-site.xml
+  copy: src=mapred-site.xml dest=/opt/hadoop/etc/hadoop/mapred-site.xml owner={{ hadoop_service_user }} group={{ hadoop_service_user }} mode=0644
+
+#
+# HDFS
+#
+- name: Stat /tmp/hadoop-hadoop/dfs/name
+  stat: path=/tmp/hadoop-hadoop/dfs/name
+  register: hdfs_format_directory
+
+- name: Format HDFS namenode
+  shell: /opt/hadoop/bin/hdfs namenode -format
+  become: yes
+  become_user: "{{ hadoop_service_user }}"
+  become_method: sudo
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+  when: hdfs_format_directory.stat.exists == False
+
+- name: Add hadoop-dfs init.d script
+  template:
+    src: init-hadoop-dfs.j2
+    dest: /etc/init.d/hadoop-dfs
+    mode: 0755
+    owner: root
+    group: root
+  when: ansible_os_family == "Debian" and ( ansible_lsb.major_release|int < 8 or ansible_lsb.major_release|int < 16 )
+
+- name: Add the Hadoop default enviroment vars
+  template:
+    src: hadoop.default.j2
+    dest: /etc/default/hadoop
+    mode: 0755
+    owner: root
+    group: root
+  when: ansible_os_family == "RedHat" or ( ansible_os_family == "Debian" and ansible_lsb.major_release|int >= 16 )
+
+- name: Add hadoop-dfs systemd script
+  template:
+    src: hadoop-dfs.service.j2
+    dest: /etc/systemd/system/hadoop-dfs.service
+    mode: 0755
+    owner: root
+    group: root
+  when: ansible_os_family == "RedHat" or ( ansible_os_family == "Debian" and ansible_lsb.major_release|int >= 16 )
+
+- name: Enable hadoop-dfs service
+  service: name=hadoop-dfs state=started enabled=yes
+
+- name: Check if /user directory is in HDFS
+  shell: /opt/hadoop/bin/hdfs dfs -ls /user
+  register: hdfs_user_directory
+  ignore_errors: yes
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+    HADOOP_COMMON_LIB_NATIVE_DIR: /opt/hadoop/lib/native
+    HADOOP_OPTS: "-Djava.library.path=/opt/hadoop/lib"
+    HADOOP_HOME_WARN_SUPPRESS: 1
+    HADOOP_ROOT_LOGGER: "WARN"
+  become: yes
+  become_user: "{{ hadoop_service_user }}"
+  become_method: sudo
+  changed_when: hdfs_user_directory.stderr != ""
+
+- name: Create /user directory is in HDFS
+  shell: /opt/hadoop/bin/hdfs dfs -mkdir /user
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+    HADOOP_COMMON_LIB_NATIVE_DIR: /opt/hadoop/lib/native
+    HADOOP_OPTS: "-Djava.library.path=/opt/hadoop/lib"
+    HADOOP_HOME_WARN_SUPPRESS: 1
+    HADOOP_ROOT_LOGGER: "WARN"
+  become: yes
+  become_user: "{{ hadoop_service_user }}"
+  become_method: sudo
+  when: hdfs_user_directory.stderr != ""
+
+- name: Check if /user/username directory is in HDFS
+  shell: /opt/hadoop/bin/hdfs dfs -ls /user/{{ hadoop_service_user }}
+  register: hdfs_user_username_directory
+  ignore_errors: yes
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+    HADOOP_COMMON_LIB_NATIVE_DIR: /opt/hadoop/lib/native
+    HADOOP_OPTS: "-Djava.library.path=/opt/hadoop/lib"
+    HADOOP_HOME_WARN_SUPPRESS: 1
+    HADOOP_ROOT_LOGGER: "WARN"
+  become: yes
+  become_user: "{{ hadoop_service_user }}"
+  become_method: sudo
+  changed_when: hdfs_user_username_directory.stderr != ""
+
+- name: Create /user/username directory is in HDFS
+  shell: /opt/hadoop/bin/hdfs dfs -mkdir /user/{{ hadoop_service_user }}
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+    HADOOP_COMMON_LIB_NATIVE_DIR: /opt/hadoop/lib/native
+    HADOOP_OPTS: "-Djava.library.path=/opt/hadoop/lib"
+    HADOOP_HOME_WARN_SUPPRESS: 1
+    HADOOP_ROOT_LOGGER: "WARN"
+  become: yes
+  become_user: "{{ hadoop_service_user }}"
+  become_method: sudo
+  when: hdfs_user_username_directory.stderr != ""
+
+- name: Change ownership of /user/username directory is in HDFS
+  shell: /opt/hadoop/bin/hdfs dfs -chown {{ hadoop_service_user }}:{{ hadoop_service_user }} /user/{{ hadoop_service_user }}
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+    HADOOP_COMMON_LIB_NATIVE_DIR: /opt/hadoop/lib/native
+    HADOOP_OPTS: "-Djava.library.path=/opt/hadoop/lib"
+    HADOOP_HOME_WARN_SUPPRESS: 1
+    HADOOP_ROOT_LOGGER: "WARN"
+  become: yes
+  become_user: "{{ hadoop_service_user }}"
+  become_method: sudo
+  when: hdfs_user_username_directory.stderr != ""
+
+#
+# YARN
+#
+- name: Add hadoop-yarn init.d script
+  template:
+    src: init-hadoop-yarn.j2
+    dest: /etc/init.d/hadoop-yarn
+    mode: 0755
+    owner: root
+    group: root
+  when: ansible_os_family == "Debian" and ( ansible_lsb.major_release|int < 8 or ansible_lsb.major_release|int < 16 )
+
+- name: Add hadoop-yarn systemd script
+  template:
+    src: hadoop-yarn.service.j2
+    dest: /etc/systemd/system/hadoop-yarn.service
+    mode: 0755
+    owner: root
+    group: root
+  when: ansible_os_family == "RedHat" or ( ansible_os_family == "Debian" and ansible_lsb.major_release|int >= 16 )
+
+- name: Enable hadoop-yarn service
+  service: name=hadoop-yarn state=started enabled=yes
