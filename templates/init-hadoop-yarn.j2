@@ -2,7 +2,7 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 USER={{ hadoop_service_user }}
 START=/opt/hadoop/sbin/start-yarn.sh
 STOP=/opt/hadoop/sbin/stop-yarn.sh
-PIDFILE=/tmp/yarn-hadoop-resourcemanager.pid
+PIDFILE=/tmp/yarn-hadoop-nodemanager.pid
 SCRIPTNAME=/etc/init.d/hadoop-yarn
 
 export JAVA_HOME={{ java_home }}
