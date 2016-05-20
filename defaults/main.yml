@@ -1,3 +1,12 @@
 ---
 hadoop_service_user: hadoop
 hadoop_version: 2.6.4
+mapreduce_map_memory_mb: 512
+mapreduce_reduce_memory_mb: 512
+mapreduce_map_java_opts: 512
+mapreduce_reduce_java_opts: 512
+yarn_nodemanager_resource_memory_mb: 512
+yarn_scheduler_maximum_allocation_mb: 512
+yarn_scheduler_minimum_allocation_mb: 128
+yarn_app_mapreduce_am_resource_mb: 512
+yarn_app_mapreduce_am_command_opts: 512

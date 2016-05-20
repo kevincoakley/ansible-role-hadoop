@@ -31,6 +31,10 @@
   become: yes
   become_method: sudo
 
+  vars:
+    - mapreduce_map_memory_mb: 1024
+    - yarn_nodemanager_resource_memory_mb: 1024
+
   roles:
     - ansible-role-hadoop
 
